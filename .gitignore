@@ -1,0 +1,5 @@
+
+/src/main/resources/settings.properties
+/target/
+/testtelegrambot.iml
+/.idea/**/*
