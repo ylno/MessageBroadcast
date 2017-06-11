@@ -19,7 +19,7 @@ public class ChatDAO {
   private final Jedis jedis;
 
   public ChatDAO() {
-    jedis = new Jedis("localhost");
+    jedis = new Jedis("redis");
 
   }
 

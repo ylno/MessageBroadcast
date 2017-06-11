@@ -24,8 +24,6 @@
 				<configuration>
 					<mainClass>info.frankl.ApplicationRunner</mainClass>
 					<arguments>
-						<argument>-Duser.country=DE</argument>
-						<argument>-Duser.language=de</argument>
 					</arguments>
 
 				</configuration>
