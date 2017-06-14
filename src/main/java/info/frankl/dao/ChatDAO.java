@@ -18,8 +18,8 @@ public class ChatDAO {
 
   private final Jedis jedis;
 
-  public ChatDAO() {
-    jedis = new Jedis("redis");
+  public ChatDAO(final String redisHost) {
+    jedis = new Jedis(redisHost);
 
   }
 

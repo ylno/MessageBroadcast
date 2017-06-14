@@ -52,7 +52,9 @@ public class Channel {
   }
 
   public void addTarget(final String target) {
-    targetList.add(target);
+    if (!hasTarget(target)) {
+      targetList.add(target);
+    }
   }
 
   public void increaseMessageCount() {
@@ -65,5 +67,20 @@ public class Channel {
 
   public void setMessageCount(final long messageCount) {
     this.messageCount = messageCount;
+  }
+
+  public boolean hasTarget(final String target) {
+    for (String presentTarget : getTargetList()) {
+      if (presentTarget.equals(target)) {
+        return true;
+      }
+
+    }
+    return false;
+  }
+
+  public void removeTarget(final String target) {
+    int i = targetList.lastIndexOf(target);
+    targetList.remove(i);
   }
 }

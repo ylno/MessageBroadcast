@@ -4,6 +4,8 @@ import com.google.common.eventbus.EventBus;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import info.frankl.bots.KonvBot;
+import info.frankl.dao.ChatDAO;
+import info.frankl.service.DataService;
 import info.frankl.web.JaxRsApplication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,13 +27,9 @@ public class ApplicationRunner {
 
   public static final String BOT_NAME = "bot-name";
 
-  public static final String BOT_PATH = "bot-path";
-
   public static final String TELEGRAM_BOT_KEY = "telegram-bot-key";
 
-  public static final String LANGUAGE = "language";
-
-  public static final String COUNTRY = "country";
+  public static final String REDIS_HOST = "redis-host";
 
   public static void main(String[] args) {
 
@@ -46,7 +44,9 @@ public class ApplicationRunner {
     checkProperties(properties);
 
     try {
-      KonvBot bot = new KonvBot(eventBus, properties.getProperty("telegram-bot-key"), properties.getProperty("bot-name"));
+      final ChatDAO chatDao = new ChatDAO(properties.getProperty(REDIS_HOST));
+      final DataService dataService = new DataService(chatDao);
+      KonvBot bot = new KonvBot(eventBus, properties.getProperty(TELEGRAM_BOT_KEY), properties.getProperty(BOT_NAME), dataService);
       telegramBotsApi.registerBot(bot);
       eventBus.register(bot);
 
@@ -66,6 +66,7 @@ public class ApplicationRunner {
   private static void checkProperties(final Properties properties) {
     checkProperty(properties, BOT_NAME);
     checkProperty(properties, TELEGRAM_BOT_KEY);
+    checkProperty(properties, REDIS_HOST);
   }
 
   private static void checkProperty(final Properties properties, final String parameterName) {

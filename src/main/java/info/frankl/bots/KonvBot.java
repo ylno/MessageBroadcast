@@ -3,9 +3,10 @@ package info.frankl.bots;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import info.frankl.CreateChannelException;
-import info.frankl.dao.ChatDAO;
+import info.frankl.bots.service.Emoji;
 import info.frankl.event.MessageEvent;
 import info.frankl.model.Channel;
+import info.frankl.service.DataService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.api.methods.AnswerCallbackQuery;
@@ -27,20 +28,18 @@ public class KonvBot extends TelegramLongPollingBot {
 
   private static final Logger logger = LoggerFactory.getLogger(KonvBot.class);
 
-  private final ChatDAO chatDao;
-
-  private EventBus eventBus;
 
   private final String botKey;
 
   private final String botName;
 
-  public KonvBot(final EventBus eventBus, final String botKey, final String botName) {
+  private final DataService dataService;
+
+  public KonvBot(final EventBus eventBus, final String botKey, final String botName, final DataService dataService) {
     super();
-    this.eventBus = eventBus;
     this.botKey = botKey;
     this.botName = botName;
-    chatDao = new ChatDAO();
+    this.dataService = dataService;
 
     eventBus.register(MessageEvent.class);
 
@@ -51,43 +50,14 @@ public class KonvBot extends TelegramLongPollingBot {
     logger.debug("update {}", update);
 
     try {
-      Long chatIdLong;
 
-      CallbackQuery callbackQuery = update.getCallbackQuery();
-      User from;
-      if (callbackQuery != null) {
-        String channelId = callbackQuery.getData();
-        logger.debug("data {}", channelId);
-
-        final AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
-        answerCallbackQuery.setCallbackQueryId(callbackQuery.getId());
-
-        answerCallbackQuery.setText("channel not found");
-        info.frankl.model.User user = chatDao.getUser(callbackQuery.getFrom().getId());
-        logger.debug("user {}", user.getId());
-        List<Channel> channels = chatDao.getChannelsForUser(user);
-        for (Channel channel : channels) {
-          if (channel.getId().toString().equals(channelId)) {
-            channel.addTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()));
-            chatDao.persistChannel(user, channel);
-            answerCallbackQuery.setText("channel added");
-            logger.debug("Target {} added to channel {}", callbackQuery.getMessage().getChat().getId(), channel.getId());
-          }
-        }
-
-        answerCallbackQuery.setText("ok");
-
-        answerCallbackQuery(answerCallbackQuery);
+      if (update.getCallbackQuery() != null) {
+        callbackQuery(update);
 
       } else {
-        SendMessage message = new SendMessage();
-        chatIdLong = update.getMessage().getChatId();
-        message.setChatId(chatIdLong);
-        from = update.getMessage().getFrom();
-        String chatId = String.valueOf(chatIdLong);
-        message.setChatId(chatId);
-        chatMessage(update, message, from, chatId);
-        sendMessage(message);
+
+        chatMessage(update);
+
       }
 
 //    message.enableMarkdown(true);
@@ -97,17 +67,55 @@ public class KonvBot extends TelegramLongPollingBot {
     }
   }
 
-  private void chatMessage(final Update update, final SendMessage message, final User from, final String chatId) {
+  public void callbackQuery(final Update update) throws TelegramApiException {
+    CallbackQuery callbackQuery = update.getCallbackQuery();
+    String channelId = callbackQuery.getData();
+    logger.debug("data {}", channelId);
 
-    info.frankl.model.User user = chatDao.getUser(from.getId());
+    final AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
+    answerCallbackQuery.setCallbackQueryId(callbackQuery.getId());
+
+    answerCallbackQuery.setText("channel not found");
+    info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId());
+    logger.debug("user {}", user.getId());
+    List<Channel> channels = dataService.getChatDao().getChannelsForUser(user);
+    for (Channel channel : channels) {
+      if (channel.getId().toString().equals(channelId)) {
+        if (!channel.hasTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()))) {
+          channel.addTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()));
+          dataService.getChatDao().persistChannel(user, channel);
+          answerCallbackQuery.setText("channel added");
+        } else {
+          channel.removeTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()));
+          dataService.getChatDao().persistChannel(user, channel);
+          answerCallbackQuery.setText("channel removed!");
+        }
+
+        logger.debug("Target {} added to channel {}", callbackQuery.getMessage().getChat().getId(), channel.getId());
+      }
+    }
+
+    answerCallbackQuery(answerCallbackQuery);
+  }
+
+  private void chatMessage(final Update update) {
+
+    final Long chatIdLong = update.getMessage().getChatId();
+    SendMessage message = new SendMessage();
+    message.setChatId(chatIdLong);
+    final User from = update.getMessage().getFrom();
+    String chatId = String.valueOf(chatIdLong);
+    message.setChatId(chatId);
+
+    info.frankl.model.User user = dataService.getChatDao().getUser(from.getId());
 
     String text = update.getMessage().getText();
-    String waitfor = chatDao.getAndDeleteWaitFor(chatId, this);
+    String waitfor = dataService.getChatDao().getAndDeleteWaitFor(chatId, this);
     if (waitfor != null && waitfor.equals("channelname")) {
 
       String channelName = text;
       try {
-        Channel channel = chatDao.createChannel(user, channelName);
+        Channel channel = dataService.getChatDao().createChannel(user, channelName);
         message.setText("channel " + channel.getName() + " created");
 
       } catch (CreateChannelException e) {
@@ -115,7 +123,7 @@ public class KonvBot extends TelegramLongPollingBot {
         answer.append(e.getMessage());
         answer.append("\nGive me a name for the channel");
         message.setText(answer.toString());
-        chatDao.setWaitFor(chatId, "channelname");
+        dataService.getChatDao().setWaitFor(chatId, "channelname");
 
       }
 
@@ -124,14 +132,17 @@ public class KonvBot extends TelegramLongPollingBot {
 
     } else if (text.equals("LIST")) {
 
-      List<Channel> channelList = chatDao.getChannelsForUser(user);
+      List<Channel> channelList = dataService.getChatDao().getChannelsForUser(user);
 
       StringBuilder answer = new StringBuilder();
       answer.append("Channellist for " + user.getId() + "\n");
+
       for (Channel channel : channelList) {
         answer.append(channel.getName()).append("\n");
+        answer.append(" ID: ").append(channel.getId()).append("\n");
         answer.append(" name").append(": ").append(channel.getName()).append("\n");
-        answer.append(" messages").append(": ").append(channel.getMessageCount()).append("\n");
+        answer.append(" messages").append(": ").append(channel.getMessageCount()).append("\n\n");
+
       }
 
       message.setText(answer.toString());
@@ -140,15 +151,21 @@ public class KonvBot extends TelegramLongPollingBot {
 
     } else if (text.equals("CREATE CHANNEL")) {
       message.setText("Give me a name for the channel");
-      chatDao.setWaitFor(chatId, "channelname");
+      dataService.getChatDao().setWaitFor(chatId, "channelname");
 
     } else if (text.equals("ACTIVATE")) {
       InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
       List<List<InlineKeyboardButton>> rows = new ArrayList<>();
       List<InlineKeyboardButton> row = new ArrayList<>();
 
-      for (Channel channel : chatDao.getChannelsForUser(user)) {
-        row.add(new InlineKeyboardButton().setText(channel.getName()).setCallbackData(channel.getId().toString()));
+      for (Channel channel : dataService.getChatDao().getChannelsForUser(user)) {
+        String emoji;
+        if (channel.hasTarget(chatId)) {
+          emoji = Emoji.CROSS_MARK.toString();
+        } else {
+          emoji = "";
+        }
+        row.add(new InlineKeyboardButton().setText(channel.getName() + " " + emoji).setCallbackData(channel.getId().toString()));
       }
 
       rows.add(row);
@@ -162,6 +179,12 @@ public class KonvBot extends TelegramLongPollingBot {
       message.setText("test");
       message.setReplyMarkup(getMainMenuKeyboard());
 
+    }
+
+    try {
+      sendMessage(message);
+    } catch (TelegramApiException e) {
+      e.printStackTrace();
     }
   }
 
@@ -183,7 +206,7 @@ public class KonvBot extends TelegramLongPollingBot {
 
     List<KeyboardRow> keyboard = new ArrayList<>();
     KeyboardRow keyboardFirstRow = new KeyboardRow();
-    keyboardFirstRow.add("HELP");
+    keyboardFirstRow.add(Emoji.WAVING_HAND_SIGN + "HELP");
     keyboardFirstRow.add("LIST");
     keyboardFirstRow.add("CREATE CHANNEL");
     keyboardFirstRow.add("ACTIVATE");
@@ -204,16 +227,22 @@ public class KonvBot extends TelegramLongPollingBot {
     try {
 
       // find chat
-      Channel channel = chatDao.getChannel(messageEvent.getChannel());
+      Channel channel = dataService.getChatDao().getChannel(messageEvent.getChannel());
 
       for (String target : channel.getTargetList()) {
-        SendMessage message = new SendMessage();
-        message.setChatId(target);
-        message.setText(messageEvent.getMessage());
-        sendMessage(message);
-        chatDao.persistChannel(channel);
+        SendMessage sendMessage = new SendMessage();
+
+        sendMessage.setChatId(target);
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("Channel ").append(channel.getName()).append("\n");
+        stringBuilder.append(messageEvent.getMessage());
+
+        sendMessage.setText(stringBuilder.toString());
+        sendMessage(sendMessage);
+
       }
       channel.increaseMessageCount();
+      dataService.getChatDao().persistChannel(channel);
 
     } catch (TelegramApiException e) {
       logger.error("error", e);
