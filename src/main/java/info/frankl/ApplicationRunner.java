@@ -104,7 +104,7 @@ public class ApplicationRunner {
   }
 
   public static URI getBaseURI() {
-    return UriBuilder.fromUri("http://localhost/").port(8000).build();
+    return UriBuilder.fromUri("http://0.0.0.0/").port(8000).build();
   }
 
 }
