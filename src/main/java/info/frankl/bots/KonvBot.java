@@ -128,7 +128,18 @@ public class KonvBot extends TelegramLongPollingBot {
       }
 
     } else if (text.equals("HELP") || text.equals("/start")) {
-      message.setText("HELP - List your channels");
+
+      StringBuilder helptext = new StringBuilder();
+      helptext.append("Use this bot to receive telegram messages from anywhere. Receive your server-monitoring messages in telegram, filled out web-forms etc. All you need is to send a post message.\n\n");
+      helptext.append("A channel is a input channel for messages. You can have many channels, they are bound to your telegram user.\n\n");
+      helptext.append("Activate a channel in any chat to receive messages. The @KonvBot must be included in this channel. One channel can be activated in many chats. Messages to this channel will be broadcasted to every chat it is activated in.\n\n");
+      helptext.append("Messages to a channel can be send with a post-message from anywhere. Structure of the postmessage: '{\"target\": \"channel-id\",\"message\": \"{your message}\"}'\n\n");
+      helptext.append("channel-id: the channel-id, get it from your channel-list\n");
+      helptext.append("{your message}: send the text that should be send to telegram.\n\n");
+      helptext.append("curl-example:\ncurl -H \"Content-Type: application/json\" -X POST -d '{\"target\": \"9288ec3b-c32c-482d-b9a1-06b08df9aaba\",\"message\": \"This is a telegram message\"}' https://message.frankl.info/message\n\n");
+      helptext.append("Please rate the bot at: https://telegram.me/storebot?start=KonvBot");
+
+      message.setText(helptext.toString());
 
     } else if (text.equals("LIST")) {
 
@@ -142,6 +153,7 @@ public class KonvBot extends TelegramLongPollingBot {
         answer.append(" ID: ").append(channel.getId()).append("\n");
         answer.append(" name").append(": ").append(channel.getName()).append("\n");
         answer.append(" messages").append(": ").append(channel.getMessageCount()).append("\n\n");
+        answer.append(" send message to this channel eg").append(": ").append("curl -H \"Content-Type: application/json\" -X POST -d '{\"target\": \"" + channel.getId() + "\",\"message\": \"This is your telegram message\"}' https://message.frankl.info/message").append("\n\n");
 
       }
 
@@ -206,7 +218,7 @@ public class KonvBot extends TelegramLongPollingBot {
 
     List<KeyboardRow> keyboard = new ArrayList<>();
     KeyboardRow keyboardFirstRow = new KeyboardRow();
-    keyboardFirstRow.add(Emoji.WAVING_HAND_SIGN + "HELP");
+    keyboardFirstRow.add("HELP");
     keyboardFirstRow.add("LIST");
     keyboardFirstRow.add("CREATE CHANNEL");
     keyboardFirstRow.add("ACTIVATE");
