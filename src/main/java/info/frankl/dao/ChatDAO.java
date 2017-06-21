@@ -129,4 +129,18 @@ public class ChatDAO {
     jedis.set(BOTKEY + ".chat." + chatId + ".waitfor", "channelname");
   }
 
+  public void deleteChannel(final User user, final Channel channel) {
+
+    jedis.lrem(BOTKEY + ".user." + user.getId() + ".channellist", 0, channel.getId().toString());
+
+    String channelID = channel.getId().toString();
+    String hashKey = BOTKEY + ".channel." + channelID;
+    jedis.del(hashKey);
+
+    // liste loeschen
+    String channelTargetKey = BOTKEY + ".channeltarget." + channelID;
+    jedis.ltrim(channelTargetKey, -1, 0);
+    jedis.del(channelTargetKey);
+
+  }
 }

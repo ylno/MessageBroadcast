@@ -28,7 +28,6 @@ public class KonvBot extends TelegramLongPollingBot {
 
   private static final Logger logger = LoggerFactory.getLogger(KonvBot.class);
 
-
   private final String botKey;
 
   private final String botName;
@@ -69,43 +68,99 @@ public class KonvBot extends TelegramLongPollingBot {
 
   public void callbackQuery(final Update update) throws TelegramApiException {
     CallbackQuery callbackQuery = update.getCallbackQuery();
-    String channelId = callbackQuery.getData();
-    logger.debug("data {}", channelId);
+    String command = callbackQuery.getData();
 
-    final AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
-    answerCallbackQuery.setCallbackQueryId(callbackQuery.getId());
+    String[] splitted = command.split("/");
+    String action = splitted[0];
+    String target = splitted[1];
 
-    answerCallbackQuery.setText("channel not found");
-    info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId());
-    logger.debug("user {}", user.getId());
-    List<Channel> channels = dataService.getChatDao().getChannelsForUser(user);
-    for (Channel channel : channels) {
-      if (channel.getId().toString().equals(channelId)) {
-        if (!channel.hasTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()))) {
-          channel.addTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()));
-          dataService.getChatDao().persistChannel(user, channel);
-          answerCallbackQuery.setText("channel added");
-        } else {
-          channel.removeTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()));
-          dataService.getChatDao().persistChannel(user, channel);
-          answerCallbackQuery.setText("channel removed!");
+    logger.debug("data {} target {}", action, target);
+
+    if (action.equals("ACTIVATECHANNEL")) {
+      final AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
+      answerCallbackQuery.setCallbackQueryId(callbackQuery.getId());
+
+      answerCallbackQuery.setText("channel not found");
+      info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId());
+      logger.debug("user {}", user.getId());
+
+      List<Channel> channels = dataService.getChatDao().getChannelsForUser(user);
+      for (Channel channel : channels) {
+        if (channel.getId().toString().equals(target)) {
+          if (!channel.hasTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()))) {
+            channel.addTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()));
+            dataService.getChatDao().persistChannel(user, channel);
+            answerCallbackQuery.setText("channel added");
+          } else {
+            channel.removeTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()));
+            dataService.getChatDao().persistChannel(user, channel);
+            answerCallbackQuery.setText("channel removed!");
+          }
+
+          logger.debug("Target {} added to channel {}", callbackQuery.getMessage().getChat().getId(), channel.getId());
         }
-
-        logger.debug("Target {} added to channel {}", callbackQuery.getMessage().getChat().getId(), channel.getId());
       }
+      answerCallbackQuery(answerCallbackQuery);
+    } else if (action.equals("EDITCHANNEL")) {
+      SendMessage sendMessage = new SendMessage();
+      StringBuilder text = new StringBuilder("what do you want to do with channel ");
+      Channel channel = dataService.getChatDao().getChannel(target);
+      text.append(channel.getName());
+      sendMessage.setText(text.toString());
+      sendMessage.setChatId(update.getCallbackQuery().getMessage().getChatId());
+
+      InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+      List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+      List<InlineKeyboardButton> row = new ArrayList<>();
+      rows.add(row);
+      row.add(new InlineKeyboardButton().setText("Delete").setCallbackData("DELETECHANNEL/" + target));
+      row.add(new InlineKeyboardButton().setText("Activate").setCallbackData("ACTIVATECHANNEL/" + target));
+      row.add(new InlineKeyboardButton().setText("Info").setCallbackData("INFOCHANNEL/" + target));
+      inlineKeyboardMarkup.setKeyboard(rows);
+
+      sendMessage.setReplyMarkup(inlineKeyboardMarkup);
+      sendMessage(sendMessage);
+    } else if (action.equals("DELETECHANNEL")) {
+      final AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
+      answerCallbackQuery.setCallbackQueryId(callbackQuery.getId());
+
+      info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId());
+
+      Channel channel = dataService.getChatDao().getChannel(target);
+      dataService.getChatDao().deleteChannel(user, channel);
+
+      answerCallbackQuery.setText("Channel deleted");
+      answerCallbackQuery(answerCallbackQuery);
+
+    } else if (action.equals("INFOCHANNEL")) {
+      info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId());
+
+      Channel channel = dataService.getChatDao().getChannel(target);
+
+      SendMessage sendMessage = new SendMessage();
+      sendMessage.setChatId(update.getCallbackQuery().getMessage().getChatId());
+      StringBuilder answer = new StringBuilder("Information about channel\n");
+
+      answer.append(channel.getName()).append("\n");
+      answer.append(" ID: ").append(channel.getId()).append("\n");
+      answer.append(" name").append(": ").append(channel.getName()).append("\n");
+      answer.append(" messages").append(": ").append(channel.getMessageCount()).append("\n");
+      answer.append(" test channel").append(": ").append("https://message.frankl.info/test?channelid=").append(channel.getId()).append("\n\n");
+      sendMessage.setText(answer.toString());
+      sendMessage(sendMessage);
     }
 
-    answerCallbackQuery(answerCallbackQuery);
   }
 
   private void chatMessage(final Update update) {
 
+    SendMessage message;
+    message = new SendMessage();
     final Long chatIdLong = update.getMessage().getChatId();
-    SendMessage message = new SendMessage();
-    message.setChatId(chatIdLong);
-    final User from = update.getMessage().getFrom();
     String chatId = String.valueOf(chatIdLong);
     message.setChatId(chatId);
+
+    final User from = update.getMessage().getFrom();
 
     info.frankl.model.User user = dataService.getChatDao().getUser(from.getId());
 
@@ -127,10 +182,9 @@ public class KonvBot extends TelegramLongPollingBot {
         answer.append("\nGive me a name for the channel");
         message.setText(answer.toString());
         dataService.getChatDao().setWaitFor(chatId, "channelname");
-
       }
 
-    } else if (text.equals("HELP") || text.equals("/start")) {
+    } else if (text.toLowerCase().equals("help") || text.equals("/start")) {
 
       StringBuilder helptext = new StringBuilder();
       helptext.append("Use this bot to receive telegram messages from anywhere. Receive your server-monitoring messages in telegram, filled out web-forms etc. All you need is to send a post message.\n\n");
@@ -142,6 +196,7 @@ public class KonvBot extends TelegramLongPollingBot {
       helptext.append("curl-example:\ncurl -H \"Content-Type: application/json\" -X POST -d '{\"target\": \"9288ec3b-c32c-482d-b9a1-06b08df9aaba\",\"message\": \"This is a telegram message\"}' https://message.frankl.info/message\n\n");
       helptext.append("Please rate the bot at: https://telegram.me/storebot?start=KonvBot");
 
+      message.setReplyMarkup(getMainMenuKeyboard());
       message.setText(helptext.toString());
 
     } else if (text.equals("LIST")) {
@@ -155,7 +210,7 @@ public class KonvBot extends TelegramLongPollingBot {
         answer.append(channel.getName()).append("\n");
         answer.append(" ID: ").append(channel.getId()).append("\n");
         answer.append(" name").append(": ").append(channel.getName()).append("\n");
-        answer.append(" messages").append(": ").append(channel.getMessageCount()).append("\n\n");
+        answer.append(" messages").append(": ").append(channel.getMessageCount()).append("\n");
         answer.append(" test channel").append(": ").append("https://message.frankl.info/test?channelid=").append(channel.getId()).append("\n\n");
 
       }
@@ -164,43 +219,22 @@ public class KonvBot extends TelegramLongPollingBot {
 
       message.setReplyMarkup(getMainMenuKeyboard());
 
-    } else if (text.equals("CREATE CHANNEL")) {
+    } else if (text.toLowerCase().equals("new channel")) {
       message.setText("Give me a name for the channel");
       dataService.getChatDao().setWaitFor(chatId, "channelname");
 
+    } else if (text.equals("Channels")) {
+      message.setText("Choose channel to edit");
+      InlineKeyboardMarkup inlineKeyboardMarkup = getChannellistKeyboard(chatId, user, "EDITCHANNEL");
+      message.setReplyMarkup(inlineKeyboardMarkup);
+
     } else if (text.equals("ACTIVATE")) {
-      InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
-      List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-      List<InlineKeyboardButton> row = new ArrayList<>();
-
-      int counter = 0;
-      for (Channel channel : dataService.getChatDao().getChannelsForUser(user)) {
-        String emoji;
-        if (channel.hasTarget(chatId)) {
-          emoji = Emoji.CROSS_MARK.toString();
-        } else {
-          emoji = "";
-        }
-        row.add(new InlineKeyboardButton().setText(channel.getName() + " " + emoji).setCallbackData(channel.getId().toString()));
-        counter++;
-        if (counter == 4) {
-          counter = 0;
-          rows.add(row);
-          row = new ArrayList<>();
-        }
-      }
-
-      if (counter != 0) {
-        rows.add(row);
-      }
-
-      // Add it to the message
-      inlineKeyboardMarkup.setKeyboard(rows);
+      InlineKeyboardMarkup inlineKeyboardMarkup = getChannellistKeyboard(chatId, user, "ACTIVATECHANNEL");
       message.setReplyMarkup(inlineKeyboardMarkup);
       message.setText("Choose channel to activate/deactivate in actual chat. Activated chats have an x-sign.");
 
     } else {
-      message.setText("test");
+      message.setText("I did not understand that. Try HELP");
       message.setReplyMarkup(getMainMenuKeyboard());
 
     }
@@ -210,6 +244,38 @@ public class KonvBot extends TelegramLongPollingBot {
     } catch (TelegramApiException e) {
       e.printStackTrace();
     }
+  }
+
+  private InlineKeyboardMarkup getChannellistKeyboard(final String chatId, final info.frankl.model.User user, String action) {
+    InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+    List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+    List<InlineKeyboardButton> row = new ArrayList<>();
+
+    int counter = 0;
+    for (Channel channel : dataService.getChatDao().getChannelsForUser(user)) {
+      String emoji;
+      if (channel.hasTarget(chatId)) {
+        emoji = Emoji.CROSS_MARK.toString();
+      } else {
+        emoji = "";
+      }
+
+      row.add(new InlineKeyboardButton().setText(channel.getName() + " " + emoji).setCallbackData(action + "/" + channel.getId().toString()));
+      counter++;
+      if (counter == 4) {
+        counter = 0;
+        rows.add(row);
+        row = new ArrayList<>();
+      }
+    }
+
+    if (counter != 0) {
+      rows.add(row);
+    }
+
+    // Add it to the message
+    inlineKeyboardMarkup.setKeyboard(rows);
+    return inlineKeyboardMarkup;
   }
 
   @Override
@@ -230,15 +296,10 @@ public class KonvBot extends TelegramLongPollingBot {
 
     List<KeyboardRow> keyboard = new ArrayList<>();
     KeyboardRow keyboardFirstRow = new KeyboardRow();
-    keyboardFirstRow.add("HELP");
-    keyboardFirstRow.add("LIST");
-    keyboardFirstRow.add("CREATE CHANNEL");
-    keyboardFirstRow.add("ACTIVATE");
-//    KeyboardRow keyboardSecondRow = new KeyboardRow();
-//    keyboardSecondRow.add(getSettingsCommand(language));
-//    keyboardSecondRow.add(getRateCommand(language));
+    keyboardFirstRow.add("Help");
+    keyboardFirstRow.add("Channels");
+    keyboardFirstRow.add("New Channel");
     keyboard.add(keyboardFirstRow);
-//    keyboard.add(keyboardSecondRow);
     replyKeyboardMarkup.setKeyboard(keyboard);
 
     return replyKeyboardMarkup;
