@@ -116,7 +116,10 @@ public class KonvBot extends TelegramLongPollingBot {
       String channelName = text;
       try {
         Channel channel = dataService.getChatDao().createChannel(user, channelName);
-        message.setText("channel " + channel.getName() + " created");
+        logger.debug("chat: ", update.getMessage().getChatId());
+        channel.addTarget(String.valueOf(update.getMessage().getChat().getId()));
+        dataService.getChatDao().persistChannel(user, channel);
+        message.setText("channel " + channel.getName() + " created and activated here");
 
       } catch (CreateChannelException e) {
         StringBuffer answer = new StringBuffer();
@@ -153,7 +156,7 @@ public class KonvBot extends TelegramLongPollingBot {
         answer.append(" ID: ").append(channel.getId()).append("\n");
         answer.append(" name").append(": ").append(channel.getName()).append("\n");
         answer.append(" messages").append(": ").append(channel.getMessageCount()).append("\n\n");
-        answer.append(" send message to this channel eg").append(": ").append("curl -H \"Content-Type: application/json\" -X POST -d '{\"target\": \"" + channel.getId() + "\",\"message\": \"This is your telegram message\"}' https://message.frankl.info/message").append("\n\n");
+        answer.append(" test channel").append(": ").append("https://message.frankl.info/test?channelid=").append(channel.getId()).append("\n\n");
 
       }
 
@@ -170,6 +173,7 @@ public class KonvBot extends TelegramLongPollingBot {
       List<List<InlineKeyboardButton>> rows = new ArrayList<>();
       List<InlineKeyboardButton> row = new ArrayList<>();
 
+      int counter = 0;
       for (Channel channel : dataService.getChatDao().getChannelsForUser(user)) {
         String emoji;
         if (channel.hasTarget(chatId)) {
@@ -178,14 +182,22 @@ public class KonvBot extends TelegramLongPollingBot {
           emoji = "";
         }
         row.add(new InlineKeyboardButton().setText(channel.getName() + " " + emoji).setCallbackData(channel.getId().toString()));
+        counter++;
+        if (counter == 4) {
+          counter = 0;
+          rows.add(row);
+          row = new ArrayList<>();
+        }
       }
 
-      rows.add(row);
+      if (counter != 0) {
+        rows.add(row);
+      }
 
       // Add it to the message
       inlineKeyboardMarkup.setKeyboard(rows);
       message.setReplyMarkup(inlineKeyboardMarkup);
-      message.setText("Choose channel to activate in actual chat");
+      message.setText("Choose channel to activate/deactivate in actual chat. Activated chats have an x-sign.");
 
     } else {
       message.setText("test");
