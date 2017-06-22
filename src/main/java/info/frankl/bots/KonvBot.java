@@ -145,7 +145,8 @@ public class KonvBot extends TelegramLongPollingBot {
       answer.append(" ID: ").append(channel.getId()).append("\n");
       answer.append(" name").append(": ").append(channel.getName()).append("\n");
       answer.append(" messages").append(": ").append(channel.getMessageCount()).append("\n");
-      answer.append(" test channel").append(": ").append("https://message.frankl.info/test?channelid=").append(channel.getId()).append("\n\n");
+      answer.append(" test channel").append(": ").append("https://message.frankl.info/test?channelid=").append(channel.getId()).append("\n");
+      answer.append(" or use simple link to send receive a message").append(": ").append("https://message.frankl.info/message/").append(channel.getId()).append("/This%20is%20a%20example%20message%20to%20telegram").append("\n");
       sendMessage.setText(answer.toString());
       sendMessage(sendMessage);
     }
@@ -211,7 +212,8 @@ public class KonvBot extends TelegramLongPollingBot {
         answer.append(" ID: ").append(channel.getId()).append("\n");
         answer.append(" name").append(": ").append(channel.getName()).append("\n");
         answer.append(" messages").append(": ").append(channel.getMessageCount()).append("\n");
-        answer.append(" test channel").append(": ").append("https://message.frankl.info/test?channelid=").append(channel.getId()).append("\n\n");
+        answer.append(" test channel").append(": ").append("https://message.frankl.info/test?channelid=").append(channel.getId()).append("\n");
+        answer.append(" or use simple link to send receive a message").append(": ").append("https://message.frankl.info/message/").append(channel.getId()).append("/This%20is%20a%20example%20message%20to%20telegram").append("\n");
 
       }
 

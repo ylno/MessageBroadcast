@@ -11,6 +11,7 @@ import javax.ws.rs.GET;
 import javax.ws.rs.OPTIONS;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -42,15 +43,22 @@ public class RestService extends ResourceConfig {
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces({MediaType.TEXT_PLAIN})
   public Response message(Message message) {
-
-
     logger.debug("eventbus {}", eventBus);
-//    eventBus.post(new MessageEvent("9288ec3b-c32c-482d-b9a1-06b08df9eaba", "Das ist ein test"));
     eventBus.post(new MessageEvent(message.getTarget(), message.getMessage()));
 
     Response response = Response.status(200).entity("ok").header("Access-Control-Allow-Origin", "*").header("Access-Control-Allow-Methods", "POST").header("Access-Control-Allow-Headers", "Content-Type").build();
 
     return response;
+  }
+
+  @GET
+  @Path("/{target}/{message}")
+  @Produces({MediaType.TEXT_PLAIN})
+  public Response messageGet(@PathParam("target") String target, @PathParam("message") String message) {
+    logger.debug("eventbus {}", eventBus);
+    eventBus.post(new MessageEvent(target, message));
+
+    return Response.status(200).entity("ok").build();
   }
 
   @GET
