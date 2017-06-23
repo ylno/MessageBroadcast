@@ -133,6 +133,7 @@ public class KonvBot extends TelegramLongPollingBot {
       answerCallbackQuery(answerCallbackQuery);
 
     } else if (action.equals("INFOCHANNEL")) {
+      // INfo
       info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId());
 
       Channel channel = dataService.getChatDao().getChannel(target);
