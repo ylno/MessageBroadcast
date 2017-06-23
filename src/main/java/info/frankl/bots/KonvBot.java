@@ -66,6 +66,7 @@ public class KonvBot extends TelegramLongPollingBot {
     }
   }
 
+  //test
   public void callbackQuery(final Update update) throws TelegramApiException {
     CallbackQuery callbackQuery = update.getCallbackQuery();
     String command = callbackQuery.getData();
