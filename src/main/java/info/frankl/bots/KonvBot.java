@@ -157,8 +157,7 @@ public class KonvBot extends TelegramLongPollingBot {
 
   private void chatMessage(final Update update) {
 
-    SendMessage message;
-    message = new SendMessage();
+    SendMessage message = new SendMessage();
     final Long chatIdLong = update.getMessage().getChatId();
     String chatId = String.valueOf(chatIdLong);
     message.setChatId(chatId);
@@ -340,7 +339,9 @@ public class KonvBot extends TelegramLongPollingBot {
       dataService.increaseMessageCount();
 
     } catch (TelegramApiException e) {
-      logger.error("error", e);
+      logger.error("Telegram-error", e);
+    } catch (Exception e) {
+      logger.error("Exception", e);
     }
   }
 

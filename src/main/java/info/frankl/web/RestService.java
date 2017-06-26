@@ -43,9 +43,9 @@ public class RestService extends ResourceConfig {
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces({MediaType.TEXT_PLAIN})
   public Response message(Message message) {
-    logger.debug("eventbus {}", eventBus);
     eventBus.post(new MessageEvent(message.getTarget(), message.getMessage()));
 
+    logger.debug("post message to {}, message: {}", message.getTarget(), message.getMessage());
     Response response = Response.status(200).entity("ok").header("Access-Control-Allow-Origin", "*").header("Access-Control-Allow-Methods", "POST").header("Access-Control-Allow-Headers", "Content-Type").build();
 
     return response;
@@ -55,7 +55,8 @@ public class RestService extends ResourceConfig {
   @Path("/{target}/{message}")
   @Produces({MediaType.TEXT_PLAIN})
   public Response messageGet(@PathParam("target") String target, @PathParam("message") String message) {
-    logger.debug("eventbus {}", eventBus);
+    logger.debug("get message to {}, message: {}", target, message);
+
     eventBus.post(new MessageEvent(target, message));
 
     return Response.status(200).entity("ok").build();
