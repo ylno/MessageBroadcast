@@ -143,4 +143,12 @@ public class ChatDAO {
     jedis.del(channelTargetKey);
 
   }
+
+  public void increaseMessageCount() {
+    jedis.incr(BOTKEY + ".common.messagecount");
+  }
+
+  public String getMessageCount() {
+    return jedis.get(BOTKEY + ".common.messagecount");
+  }
 }

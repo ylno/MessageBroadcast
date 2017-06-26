@@ -13,4 +13,12 @@ public class DataService {
   public ChatDAO getChatDao() {
     return chatDao;
   }
+
+  public void increaseMessageCount() {
+    chatDao.increaseMessageCount();
+  }
+
+  public String getMessageCount() {
+    return chatDao.getMessageCount();
+  }
 }

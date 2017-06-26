@@ -237,6 +237,10 @@ public class KonvBot extends TelegramLongPollingBot {
       message.setReplyMarkup(inlineKeyboardMarkup);
       message.setText("Choose channel to activate/deactivate in actual chat. Activated chats have an x-sign.");
 
+    } else if (text.toLowerCase().equals("/stats")) {
+      StringBuilder answer = new StringBuilder("messages total: " + dataService.getMessageCount());
+      message.setText(answer.toString());
+
     } else {
       message.setText("I did not understand that. Try HELP");
       message.setReplyMarkup(getMainMenuKeyboard());
@@ -332,6 +336,8 @@ public class KonvBot extends TelegramLongPollingBot {
       }
       channel.increaseMessageCount();
       dataService.getChatDao().persistChannel(channel);
+
+      dataService.increaseMessageCount();
 
     } catch (TelegramApiException e) {
       logger.error("error", e);
