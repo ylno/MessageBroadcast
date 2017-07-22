@@ -28,6 +28,8 @@ public class KonvBot extends TelegramLongPollingBot {
 
   private static final Logger logger = LoggerFactory.getLogger(KonvBot.class);
 
+  public static final int MAX_TELEGRAM_MESSAGE_SIZE = 4096;
+
   private final String botKey;
 
   private final String botName;
@@ -114,9 +116,9 @@ public class KonvBot extends TelegramLongPollingBot {
       List<List<InlineKeyboardButton>> rows = new ArrayList<>();
       List<InlineKeyboardButton> row = new ArrayList<>();
       rows.add(row);
-      row.add(new InlineKeyboardButton().setText("Delete").setCallbackData("DELETECHANNEL/" + target));
-      row.add(new InlineKeyboardButton().setText("Activate").setCallbackData("ACTIVATECHANNEL/" + target));
       row.add(new InlineKeyboardButton().setText("Info").setCallbackData("INFOCHANNEL/" + target));
+      row.add(new InlineKeyboardButton().setText("Activate").setCallbackData("ACTIVATECHANNEL/" + target));
+      row.add(new InlineKeyboardButton().setText("Delete").setCallbackData("DELETECHANNEL/" + target));
       inlineKeyboardMarkup.setKeyboard(rows);
 
       sendMessage.setReplyMarkup(inlineKeyboardMarkup);
@@ -322,15 +324,20 @@ public class KonvBot extends TelegramLongPollingBot {
       Channel channel = dataService.getChatDao().getChannel(messageEvent.getChannel());
 
       for (String target : channel.getTargetList()) {
-        SendMessage sendMessage = new SendMessage();
 
-        sendMessage.setChatId(target);
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("Channel ").append(channel.getName()).append("\n");
-        stringBuilder.append(messageEvent.getMessage());
 
-        sendMessage.setText(stringBuilder.toString());
-        sendMessage(sendMessage);
+        String message = messageEvent.getMessage();
+        List<String> messages = splitStringIntoSmallMessages(message);
+
+        for (String part : messages) {
+          SendMessage sendMessage = new SendMessage();
+          sendMessage.setChatId(target);
+          sendMessage.setText(part);
+          sendMessage(sendMessage);
+        }
+
 
       }
       channel.increaseMessageCount();
@@ -343,6 +350,23 @@ public class KonvBot extends TelegramLongPollingBot {
     } catch (Exception e) {
       logger.error("Exception", e);
     }
+  }
+
+  protected List<String> splitStringIntoSmallMessages(final String message) {
+    return splitStringIntoParts(message, MAX_TELEGRAM_MESSAGE_SIZE);
+  }
+
+  protected List<String> splitStringIntoParts(String string, int length) {
+    ArrayList<String> strings = new ArrayList<>();
+    int beginIndex = 0;
+    while (beginIndex < string.length()) {
+      int rest = string.length() - beginIndex;
+      int nextLength = rest > length ? length : rest;
+      int endIndex = beginIndex + nextLength;
+      strings.add(string.substring(beginIndex, endIndex));
+      beginIndex += nextLength;
+    }
+    return strings;
   }
 
 }
