@@ -1,12 +1,8 @@
 package info.frankl.bots;
 
-import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
-import info.frankl.CreateChannelException;
-import info.frankl.bots.service.Emoji;
-import info.frankl.event.MessageEvent;
-import info.frankl.model.Channel;
-import info.frankl.service.DataService;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.api.methods.AnswerCallbackQuery;
@@ -21,8 +17,14 @@ import org.telegram.telegrambots.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
+
+import info.frankl.CreateChannelException;
+import info.frankl.bots.service.Emoji;
+import info.frankl.event.MessageEvent;
+import info.frankl.model.Channel;
+import info.frankl.service.DataService;
 
 public class KonvBot extends TelegramLongPollingBot {
 
@@ -61,10 +63,17 @@ public class KonvBot extends TelegramLongPollingBot {
 
       }
 
-//    message.enableMarkdown(true);
+      //    message.enableMarkdown(true);
 
-    } catch (TelegramApiException e) {
+    }
+    catch (TelegramApiException e) {
       logger.debug("send failed", e);
+    }
+    catch (IllegalMessageException e) {
+      logger.debug("no message in update, skipping");
+    }
+    catch (Exception e) {
+      logger.debug("Unknown exception", e);
     }
   }
 
@@ -157,9 +166,12 @@ public class KonvBot extends TelegramLongPollingBot {
 
   }
 
-  private void chatMessage(final Update update) {
+  private void chatMessage(final Update update) throws IllegalMessageException {
 
     SendMessage message = new SendMessage();
+    if (update.getMessage() == null) {
+      throw new IllegalMessageException();
+    }
     final Long chatIdLong = update.getMessage().getChatId();
     String chatId = String.valueOf(chatIdLong);
     message.setChatId(chatId);
