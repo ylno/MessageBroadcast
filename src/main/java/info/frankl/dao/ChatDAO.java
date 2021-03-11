@@ -40,14 +40,11 @@ public class ChatDAO {
   }
 
   public String getAndDeleteWaitFor(final String chatId, final KonvBot konvBot) {
-    final String waitfor = getJedis().get(getKeyWaitFor(chatId));
-    getJedis().del(getKeyWaitFor(chatId));
-    return waitfor;
-  }
-
-  public Jedis getJedis() {
-    return jedisPool.getResource();
-    //    return jedis;
+    try (Jedis jedis = jedisPool.getResource()) {
+      final String waitfor = jedis.get(getKeyWaitFor(chatId));
+      jedis.del(getKeyWaitFor(chatId));
+      return waitfor;
+    }
   }
 
   private String getKeyWaitFor(final String chatId) {
@@ -70,100 +67,115 @@ public class ChatDAO {
   }
 
   public void persistChannel(final Channel channel) {
-    String channelID = channel.getId().toString();
-    HashMap<String, String> channelData = new HashMap<>();
-    channelData.put("name", channel.getName());
-    channelData.put("messagecount", String.valueOf(channel.getMessageCount()));
-    getJedis().hmset(BOTKEY + ".channel." + channelID, channelData);
+    try (Jedis jedis = jedisPool.getResource()) {
+      String channelID = channel.getId().toString();
+      HashMap<String, String> channelData = new HashMap<>();
+      channelData.put("name", channel.getName());
+      channelData.put("messagecount", String.valueOf(channel.getMessageCount()));
+      jedis.hmset(BOTKEY + ".channel." + channelID, channelData);
 
-    // liste loeschen
-    getJedis().ltrim(BOTKEY + ".channeltarget." + channelID, -1, 0);
-    getJedis().del(BOTKEY + ".channeltarget." + channelID);
+      // liste loeschen
+      jedis.ltrim(BOTKEY + ".channeltarget." + channelID, -1, 0);
+      jedis.del(BOTKEY + ".channeltarget." + channelID);
 
-    for (String target : channel.getTargetList()) {
-      getJedis().lpush(BOTKEY + ".channeltarget." + channelID, target);
+      for (String target : channel.getTargetList()) {
+        jedis.lpush(BOTKEY + ".channeltarget." + channelID, target);
+      }
     }
   }
 
   public void persistChannel(final User user, final Channel channel) {
-    String channelID = channel.getId().toString();
-    boolean present = false;
-    for (Channel storedChannel : this.getChannelsForUser(user)) {
-      if (storedChannel.getId().toString().equals(channelID)) {
-        present = true;
+    try (Jedis jedis = jedisPool.getResource()) {
+      String channelID = channel.getId().toString();
+      boolean present = false;
+      for (Channel storedChannel : this.getChannelsForUser(user)) {
+        if (storedChannel.getId().toString().equals(channelID)) {
+          present = true;
+        }
       }
-    }
 
-    if (!present) {
-      getJedis().lpush(BOTKEY + ".user." + user.getId() + ".channellist", channelID);
+      if (!present) {
+        jedis.lpush(BOTKEY + ".user." + user.getId() + ".channellist", channelID);
+      }
+      persistChannel(channel);
     }
-    persistChannel(channel);
-
   }
 
   public List<Channel> getChannelsForUser(final User user) {
-    List<Channel> resultList = new ArrayList<>();
-    List<String> channelIds = getJedis().lrange(BOTKEY + ".user." + user.getId() + ".channellist", 0, 100);
+    try (Jedis jedis = jedisPool.getResource()) {
+      List<Channel> resultList = new ArrayList<>();
+      List<String> channelIds = jedis.lrange(BOTKEY + ".user." + user.getId() + ".channellist", 0, 100);
 
-    if (channelIds != null) {
-      for (String channelId : channelIds) {
-        Channel channel = getChannel(channelId);
-        resultList.add(channel);
+      if (channelIds != null) {
+        for (String channelId : channelIds) {
+          Channel channel = getChannel(channelId);
+          resultList.add(channel);
+        }
       }
-    }
 
-    return resultList;
+      return resultList;
+    }
   }
 
   public Channel getChannel(final String channelId) {
-    Channel channel = new Channel();
-    channel.setId(UUID.fromString(channelId));
-    Map<String, String> stringStringMap = getJedis().hgetAll(BOTKEY + ".channel." + channel.getId());
-    channel.setName(stringStringMap.get("name"));
-    String messagecount = stringStringMap.get("messagecount");
+    try (Jedis jedis = jedisPool.getResource()) {
+      Channel channel = new Channel();
+      channel.setId(UUID.fromString(channelId));
+      Map<String, String> stringStringMap = jedis.hgetAll(BOTKEY + ".channel." + channel.getId());
+      channel.setName(stringStringMap.get("name"));
+      String messagecount = stringStringMap.get("messagecount");
 
-    Long messageCount;
-    if (messagecount != null) {
-      messageCount = Long.valueOf(messagecount);
-    } else {
-      messageCount = 0L;
+      Long messageCount;
+      if (messagecount != null) {
+        messageCount = Long.valueOf(messagecount);
+      }
+      else {
+        messageCount = 0L;
+      }
+
+      channel.setMessageCount(messageCount);
+      // TODO dynamisches Ende
+      List<String> targetStrings = jedis.lrange(BOTKEY + ".channeltarget." + channelId, 0, 100);
+      for (String targetString : targetStrings) {
+        channel.addTarget(targetString);
+      }
+
+      return channel;
     }
-
-    channel.setMessageCount(messageCount);
-    // TODO dynamisches Ende
-    List<String> targetStrings = getJedis().lrange(BOTKEY + ".channeltarget." + channelId, 0, 100);
-    for (String targetString : targetStrings) {
-      channel.addTarget(targetString);
-    }
-
-    return channel;
   }
 
   public void setWaitFor(final String chatId, final String channelname) {
 
-    getJedis().set(BOTKEY + ".chat." + chatId + ".waitfor", "channelname");
+    try (Jedis jedis = jedisPool.getResource()) {
+      jedis.set(BOTKEY + ".chat." + chatId + ".waitfor", "channelname");
+    }
   }
 
   public void deleteChannel(final User user, final Channel channel) {
+    try (Jedis jedis = jedisPool.getResource()) {
+      jedis.lrem(BOTKEY + ".user." + user.getId() + ".channellist", 0, channel.getId().toString());
 
-    getJedis().lrem(BOTKEY + ".user." + user.getId() + ".channellist", 0, channel.getId().toString());
+      String channelID = channel.getId().toString();
+      String hashKey = BOTKEY + ".channel." + channelID;
+      jedis.del(hashKey);
 
-    String channelID = channel.getId().toString();
-    String hashKey = BOTKEY + ".channel." + channelID;
-    getJedis().del(hashKey);
-
-    // liste loeschen
-    String channelTargetKey = BOTKEY + ".channeltarget." + channelID;
-    getJedis().ltrim(channelTargetKey, -1, 0);
-    getJedis().del(channelTargetKey);
+      // liste loeschen
+      String channelTargetKey = BOTKEY + ".channeltarget." + channelID;
+      jedis.ltrim(channelTargetKey, -1, 0);
+      jedis.del(channelTargetKey);
+    }
 
   }
 
   public void increaseMessageCount() {
-    getJedis().incr(BOTKEY + ".common.messagecount");
+    try (Jedis jedis = jedisPool.getResource()) {
+      jedis.incr(BOTKEY + ".common.messagecount");
+    }
   }
 
   public String getMessageCount() {
-    return getJedis().get(BOTKEY + ".common.messagecount");
+    try (Jedis jedis = jedisPool.getResource()) {
+      return jedis.get(BOTKEY + ".common.messagecount");
+    }
   }
 }

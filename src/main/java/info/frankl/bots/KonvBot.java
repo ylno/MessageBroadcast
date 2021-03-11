@@ -188,7 +188,7 @@ public class KonvBot extends TelegramLongPollingBot {
 
     String text = update.getMessage().getText();
     String waitfor = dataService.getChatDao().getAndDeleteWaitFor(chatId, this);
-    logger.debug("start chatMessage 2");
+    logger.debug("start chatMessage 2 {}", waitfor != null ? waitfor : "nothing");
     if (waitfor != null && waitfor.equals("channelname")) {
 
       String channelName = text;
