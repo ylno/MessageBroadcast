@@ -54,14 +54,12 @@ public class KonvBot extends TelegramLongPollingBot {
     logger.debug("update {}", update);
 
     try {
-
       if (update.getCallbackQuery() != null) {
+        logger.debug("callback");
         callbackQuery(update);
-
       } else {
-
+        logger.debug("message");
         chatMessage(update);
-
       }
 
       //    message.enableMarkdown(true);
@@ -104,7 +102,8 @@ public class KonvBot extends TelegramLongPollingBot {
             channel.addTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()));
             dataService.getChatDao().persistChannel(user, channel);
             answerCallbackQuery.setText("channel added");
-          } else {
+          }
+          else {
             channel.removeTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()));
             dataService.getChatDao().persistChannel(user, channel);
             answerCallbackQuery.setText("channel removed!");
@@ -114,7 +113,8 @@ public class KonvBot extends TelegramLongPollingBot {
         }
       }
       answerCallbackQuery(answerCallbackQuery);
-    } else if (action.equals("EDITCHANNEL")) {
+    }
+    else if (action.equals("EDITCHANNEL")) {
       SendMessage sendMessage = new SendMessage();
       StringBuilder text = new StringBuilder("what do you want to do with channel ");
       Channel channel = dataService.getChatDao().getChannel(target);
@@ -133,7 +133,8 @@ public class KonvBot extends TelegramLongPollingBot {
 
       sendMessage.setReplyMarkup(inlineKeyboardMarkup);
       sendMessage(sendMessage);
-    } else if (action.equals("DELETECHANNEL")) {
+    }
+    else if (action.equals("DELETECHANNEL")) {
       final AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
       answerCallbackQuery.setCallbackQueryId(callbackQuery.getId());
 
@@ -145,7 +146,8 @@ public class KonvBot extends TelegramLongPollingBot {
       answerCallbackQuery.setText("Channel deleted");
       answerCallbackQuery(answerCallbackQuery);
 
-    } else if (action.equals("INFOCHANNEL")) {
+    }
+    else if (action.equals("INFOCHANNEL")) {
       // INfo
       info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId());
 
@@ -160,15 +162,16 @@ public class KonvBot extends TelegramLongPollingBot {
       answer.append(" name").append(": ").append(channel.getName()).append("\n");
       answer.append(" messages").append(": ").append(channel.getMessageCount()).append("\n");
       answer.append(" test channel").append(": ").append("https://message.frankl.info/test?channelid=").append(channel.getId()).append("\n");
-      answer.append(" or use simple link to send receive a message").append(": ").append("https://message.frankl.info/message/").append(channel.getId()).append("/This%20is%20a%20example%20message%20to%20telegram").append("\n");
+      answer.append(" or use simple link to send receive a message").append(": ").append("https://message.frankl.info/message/").append(channel.getId())
+          .append("/This%20is%20a%20example%20message%20to%20telegram").append("\n");
       sendMessage.setText(answer.toString());
       sendMessage(sendMessage);
     }
-
   }
 
   private void chatMessage(final Update update) throws IllegalMessageException {
 
+    logger.debug("start chatMessage");
     SendMessage message = new SendMessage();
     if (update.getMessage() == null) {
       throw new IllegalMessageException();
@@ -177,23 +180,29 @@ public class KonvBot extends TelegramLongPollingBot {
     String chatId = String.valueOf(chatIdLong);
     message.setChatId(chatId);
 
+    logger.debug("start chatMessage 1");
+
     final User from = update.getMessage().getFrom();
 
     info.frankl.model.User user = dataService.getChatDao().getUser(from.getId());
 
     String text = update.getMessage().getText();
     String waitfor = dataService.getChatDao().getAndDeleteWaitFor(chatId, this);
+    logger.debug("start chatMessage 2");
     if (waitfor != null && waitfor.equals("channelname")) {
 
       String channelName = text;
       try {
+        logger.debug("start chatMessage 3");
         Channel channel = dataService.getChatDao().createChannel(user, channelName);
         logger.debug("chat: ", update.getMessage().getChatId());
         channel.addTarget(String.valueOf(update.getMessage().getChat().getId()));
         dataService.getChatDao().persistChannel(user, channel);
         message.setText("channel " + channel.getName() + " created and activated here");
 
+        logger.debug("start chatMessage 4");
       } catch (CreateChannelException e) {
+        logger.debug("start chatMessage 5");
         StringBuffer answer = new StringBuffer();
         answer.append(e.getMessage());
         answer.append("\nGive me a name for the channel");
