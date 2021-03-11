@@ -1,26 +1,27 @@
 package info.frankl.dao;
 
-import info.frankl.CreateChannelException;
-import info.frankl.bots.KonvBot;
-import info.frankl.model.Channel;
-import info.frankl.model.User;
-import redis.clients.jedis.Jedis;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import info.frankl.CreateChannelException;
+import info.frankl.bots.KonvBot;
+import info.frankl.model.Channel;
+import info.frankl.model.User;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
+
 public class ChatDAO {
 
   public static final String BOTKEY = "konvbot";
 
-  private final Jedis jedis;
+  private final JedisPool jedisPool;
 
   public ChatDAO(final String redisHost) {
-    jedis = new Jedis(redisHost);
-
+    jedisPool = new JedisPool(new JedisPoolConfig(), redisHost);
   }
 
   public User getUser(final Integer id) {
@@ -30,9 +31,13 @@ public class ChatDAO {
   }
 
   public String getAndDeleteWaitFor(final String chatId, final KonvBot konvBot) {
-    final String waitfor = jedis.get(getKeyWaitFor(chatId));
-    jedis.del(getKeyWaitFor(chatId));
+    final String waitfor = getJedis().get(getKeyWaitFor(chatId));
+    getJedis().del(getKeyWaitFor(chatId));
     return waitfor;
+  }
+
+  public Jedis getJedis() {
+    return jedisPool.getResource();
   }
 
   private String getKeyWaitFor(final String chatId) {
@@ -59,14 +64,14 @@ public class ChatDAO {
     HashMap<String, String> channelData = new HashMap<>();
     channelData.put("name", channel.getName());
     channelData.put("messagecount", String.valueOf(channel.getMessageCount()));
-    jedis.hmset(BOTKEY + ".channel." + channelID, channelData);
+    getJedis().hmset(BOTKEY + ".channel." + channelID, channelData);
 
     // liste loeschen
-    jedis.ltrim(BOTKEY + ".channeltarget." + channelID, -1, 0);
-    jedis.del(BOTKEY + ".channeltarget." + channelID);
+    getJedis().ltrim(BOTKEY + ".channeltarget." + channelID, -1, 0);
+    getJedis().del(BOTKEY + ".channeltarget." + channelID);
 
     for (String target : channel.getTargetList()) {
-      jedis.lpush(BOTKEY + ".channeltarget." + channelID, target);
+      getJedis().lpush(BOTKEY + ".channeltarget." + channelID, target);
     }
   }
 
@@ -80,7 +85,7 @@ public class ChatDAO {
     }
 
     if (!present) {
-      jedis.lpush(BOTKEY + ".user." + user.getId() + ".channellist", channelID);
+      getJedis().lpush(BOTKEY + ".user." + user.getId() + ".channellist", channelID);
     }
     persistChannel(channel);
 
@@ -88,7 +93,7 @@ public class ChatDAO {
 
   public List<Channel> getChannelsForUser(final User user) {
     List<Channel> resultList = new ArrayList<>();
-    List<String> channelIds = jedis.lrange(BOTKEY + ".user." + user.getId() + ".channellist", 0, 100);
+    List<String> channelIds = getJedis().lrange(BOTKEY + ".user." + user.getId() + ".channellist", 0, 100);
 
     if (channelIds != null) {
       for (String channelId : channelIds) {
@@ -103,20 +108,20 @@ public class ChatDAO {
   public Channel getChannel(final String channelId) {
     Channel channel = new Channel();
     channel.setId(UUID.fromString(channelId));
-    Map<String, String> stringStringMap = jedis.hgetAll(BOTKEY + ".channel." + channel.getId());
+    Map<String, String> stringStringMap = getJedis().hgetAll(BOTKEY + ".channel." + channel.getId());
     channel.setName(stringStringMap.get("name"));
     String messagecount = stringStringMap.get("messagecount");
 
     Long messageCount;
     if (messagecount != null) {
-      messageCount = new Long(messagecount);
+      messageCount = Long.valueOf(messagecount);
     } else {
       messageCount = 0L;
     }
 
     channel.setMessageCount(messageCount);
     // TODO dynamisches Ende
-    List<String> targetStrings = jedis.lrange(BOTKEY + ".channeltarget." + channelId, 0, 100);
+    List<String> targetStrings = getJedis().lrange(BOTKEY + ".channeltarget." + channelId, 0, 100);
     for (String targetString : targetStrings) {
       channel.addTarget(targetString);
     }
@@ -126,29 +131,29 @@ public class ChatDAO {
 
   public void setWaitFor(final String chatId, final String channelname) {
 
-    jedis.set(BOTKEY + ".chat." + chatId + ".waitfor", "channelname");
+    getJedis().set(BOTKEY + ".chat." + chatId + ".waitfor", "channelname");
   }
 
   public void deleteChannel(final User user, final Channel channel) {
 
-    jedis.lrem(BOTKEY + ".user." + user.getId() + ".channellist", 0, channel.getId().toString());
+    getJedis().lrem(BOTKEY + ".user." + user.getId() + ".channellist", 0, channel.getId().toString());
 
     String channelID = channel.getId().toString();
     String hashKey = BOTKEY + ".channel." + channelID;
-    jedis.del(hashKey);
+    getJedis().del(hashKey);
 
     // liste loeschen
     String channelTargetKey = BOTKEY + ".channeltarget." + channelID;
-    jedis.ltrim(channelTargetKey, -1, 0);
-    jedis.del(channelTargetKey);
+    getJedis().ltrim(channelTargetKey, -1, 0);
+    getJedis().del(channelTargetKey);
 
   }
 
   public void increaseMessageCount() {
-    jedis.incr(BOTKEY + ".common.messagecount");
+    getJedis().incr(BOTKEY + ".common.messagecount");
   }
 
   public String getMessageCount() {
-    return jedis.get(BOTKEY + ".common.messagecount");
+    return getJedis().get(BOTKEY + ".common.messagecount");
   }
 }
