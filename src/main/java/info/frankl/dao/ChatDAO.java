@@ -14,6 +14,8 @@ import info.frankl.bots.KonvBot;
 import info.frankl.model.Channel;
 import info.frankl.model.User;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 public class ChatDAO {
 
@@ -21,13 +23,13 @@ public class ChatDAO {
 
   public static final String BOTKEY = "konvbot";
 
-  //  private final JedisPool jedisPool;
-  private final Jedis jedis;
+  private final JedisPool jedisPool;
+  private Jedis jedis;
 
   public ChatDAO(final String redisHost) {
-    //    jedisPool = new JedisPool(new JedisPoolConfig(), redisHost);
-    jedis = new Jedis(redisHost);
-//    logger.debug("jedis init", jedis.clusterInfo());
+    jedisPool = new JedisPool(new JedisPoolConfig(), redisHost);
+    //    jedis = new Jedis(redisHost);
+    logger.debug("jedis init", jedis.clusterInfo());
   }
 
   public User getUser(final Integer id) {
@@ -43,8 +45,8 @@ public class ChatDAO {
   }
 
   public Jedis getJedis() {
-    //    return jedisPool.getResource();
-    return jedis;
+    return jedisPool.getResource();
+    //    return jedis;
   }
 
   private String getKeyWaitFor(final String chatId) {
