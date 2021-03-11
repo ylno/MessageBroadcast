@@ -29,6 +29,7 @@ public class ChatDAO {
   public ChatDAO(final String redisHost) {
     jedisPool = new JedisPool(new JedisPoolConfig(), redisHost);
     //    jedis = new Jedis(redisHost);
+    logger.debug("jedis init now");
     logger.debug("jedis init", jedisPool.toString());
   }
 
