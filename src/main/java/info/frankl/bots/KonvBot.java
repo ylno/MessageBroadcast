@@ -31,6 +31,7 @@ public class KonvBot extends TelegramLongPollingBot {
   private static final Logger logger = LoggerFactory.getLogger(KonvBot.class);
 
   public static final int MAX_TELEGRAM_MESSAGE_SIZE = 4096;
+  private static final String VERSION = "1.1.0";
 
   private final String botKey;
 
@@ -209,8 +210,9 @@ public class KonvBot extends TelegramLongPollingBot {
       helptext.append("Messages to a channel can be send with a post-message from anywhere. Structure of the postmessage: '{\"target\": \"channel-id\",\"message\": \"{your message}\"}'\n\n");
       helptext.append("channel-id: the channel-id, get it from your channel-list\n");
       helptext.append("{your message}: send the text that should be send to telegram.\n\n");
-      helptext.append("curl-example:\ncurl -H \"Content-Type: application/json\" -X POST -d '{\"target\": \"9288ec3b-c32c-482d-b9a1-06b08df9aaba\",\"message\": \"This is a telegram message\"}' https://message.frankl.info/message\n\n");
-      helptext.append("Please rate the bot at: https://telegram.me/storebot?start=KonvBot");
+      helptext.append(
+          "curl-example:\ncurl -H \"Content-Type: application/json\" -X POST -d '{\"target\": \"9288ec3b-c32c-482d-b9a1-06b08df9aaba\",\"message\": \"This is a telegram message\"}' https://message.frankl.info/message\n\n");
+      helptext.append("Version: " + VERSION);
 
       message.setReplyMarkup(getMainMenuKeyboard());
       message.setText(helptext.toString());
