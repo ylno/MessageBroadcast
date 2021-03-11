@@ -31,7 +31,7 @@ public class KonvBot extends TelegramLongPollingBot {
   private static final Logger logger = LoggerFactory.getLogger(KonvBot.class);
 
   public static final int MAX_TELEGRAM_MESSAGE_SIZE = 4096;
-  private static final String VERSION = "1.1.0";
+  private static final String VERSION = "1.1.1";
 
   private final String botKey;
 
