@@ -39,6 +39,12 @@ public class ChatDAO {
     return user;
   }
 
+  public User getUser(final String id) {
+    User user = new User();
+    user.setId(String.valueOf(id));
+    return user;
+  }
+
   public String getAndDeleteWaitFor(final String chatId, final KonvBot konvBot) {
     try (Jedis jedis = jedisPool.getResource()) {
       final String waitfor = jedis.get(getKeyWaitFor(chatId));

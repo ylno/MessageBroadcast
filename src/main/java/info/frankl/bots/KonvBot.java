@@ -92,7 +92,7 @@ public class KonvBot extends TelegramLongPollingBot {
       answerCallbackQuery.setCallbackQueryId(callbackQuery.getId());
 
       answerCallbackQuery.setText("channel not found");
-      info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId());
+      info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId().toString());
       logger.debug("user {}", user.getId());
 
       List<Channel> channels = dataService.getChatDao().getChannelsForUser(user);
@@ -138,7 +138,7 @@ public class KonvBot extends TelegramLongPollingBot {
       final AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
       answerCallbackQuery.setCallbackQueryId(callbackQuery.getId());
 
-      info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId());
+      info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId().toString());
 
       Channel channel = dataService.getChatDao().getChannel(target);
       dataService.getChatDao().deleteChannel(user, channel);
@@ -149,7 +149,7 @@ public class KonvBot extends TelegramLongPollingBot {
     }
     else if (action.equals("INFOCHANNEL")) {
       // INfo
-      info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId());
+      info.frankl.model.User user = dataService.getChatDao().getUser(callbackQuery.getFrom().getId().toString());
 
       Channel channel = dataService.getChatDao().getChannel(target);
 
@@ -184,7 +184,7 @@ public class KonvBot extends TelegramLongPollingBot {
 
     final User from = update.getMessage().getFrom();
 
-    info.frankl.model.User user = dataService.getChatDao().getUser(from.getId());
+    info.frankl.model.User user = dataService.getChatDao().getUser(from.getId().toString());
 
     String text = update.getMessage().getText();
     String waitfor = dataService.getChatDao().getAndDeleteWaitFor(chatId, this);
