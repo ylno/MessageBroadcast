@@ -12,7 +12,9 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import com.google.common.eventbus.EventBus;
@@ -110,7 +112,7 @@ public class KonvBot extends TelegramLongPollingBot {
           logger.debug("Target {} added to channel {}", callbackQuery.getMessage().getChatId(), channel.getId());
         }
       }
-      answerCallbackQuery(answerCallbackQuery);
+      execute(answerCallbackQuery);
     }
     else if (action.equals("EDITCHANNEL")) {
       SendMessage sendMessage = new SendMessage();
@@ -142,7 +144,7 @@ public class KonvBot extends TelegramLongPollingBot {
       inlineKeyboardMarkup.setKeyboard(rows);
 
       sendMessage.setReplyMarkup(inlineKeyboardMarkup);
-      sendMessage(sendMessage);
+      execute(sendMessage);
     }
     else if (action.equals("DELETECHANNEL")) {
       final AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
@@ -154,8 +156,7 @@ public class KonvBot extends TelegramLongPollingBot {
       dataService.getChatDao().deleteChannel(user, channel);
 
       answerCallbackQuery.setText("Channel deleted");
-      answerCallbackQuery(answerCallbackQuery);
-
+      execute(answerCallbackQuery);
     }
     else if (action.equals("INFOCHANNEL")) {
       // INfo
@@ -175,7 +176,8 @@ public class KonvBot extends TelegramLongPollingBot {
       answer.append(" or use simple link to send receive a message").append(": ").append("https://message.frankl.info/message/").append(channel.getId())
           .append("/This%20is%20a%20example%20message%20to%20telegram").append("\n");
       sendMessage.setText(answer.toString());
-      sendMessage(sendMessage);
+      //      sendMessage(sendMessage);
+      execute(sendMessage);
     }
   }
 
@@ -282,7 +284,9 @@ public class KonvBot extends TelegramLongPollingBot {
     }
 
     try {
-      sendMessage(message);
+      execute(message);
+      //      sendMessage(message);
+
     } catch (TelegramApiException e) {
       e.printStackTrace();
     }
@@ -302,7 +306,10 @@ public class KonvBot extends TelegramLongPollingBot {
         emoji = "";
       }
 
-      row.add(new InlineKeyboardButton().setText(channel.getName() + " " + emoji).setCallbackData(action + "/" + channel.getId().toString()));
+      InlineKeyboardButton inlineKeyboardButton = new InlineKeyboardButton();
+      inlineKeyboardButton.setText(channel.getName() + " " + emoji);
+      inlineKeyboardButton.setCallbackData(action + "/" + channel.getId().toString());
+      row.add(inlineKeyboardButton);
       counter++;
       if (counter == 4) {
         counter = 0;
@@ -334,7 +341,7 @@ public class KonvBot extends TelegramLongPollingBot {
     ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
     replyKeyboardMarkup.setSelective(true);
     replyKeyboardMarkup.setResizeKeyboard(true);
-    replyKeyboardMarkup.setOneTimeKeyboad(false);
+    replyKeyboardMarkup.setOneTimeKeyboard(false);
 
     List<KeyboardRow> keyboard = new ArrayList<>();
     KeyboardRow keyboardFirstRow = new KeyboardRow();
@@ -368,7 +375,7 @@ public class KonvBot extends TelegramLongPollingBot {
           SendMessage sendMessage = new SendMessage();
           sendMessage.setChatId(target);
           sendMessage.setText(part);
-          sendMessage(sendMessage);
+          execute(sendMessage);
         }
 
 
