@@ -33,7 +33,7 @@ public class ChatDAO {
     logger.debug("jedis init", jedisPool.toString());
   }
 
-  public User getUser(final Integer id) {
+  public User getUser(final Long id) {
     User user = new User();
     user.setId(String.valueOf(id));
     return user;

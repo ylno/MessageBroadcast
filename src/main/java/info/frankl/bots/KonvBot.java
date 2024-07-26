@@ -5,17 +5,17 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.telegram.telegrambots.api.methods.AnswerCallbackQuery;
-import org.telegram.telegrambots.api.methods.send.SendMessage;
-import org.telegram.telegrambots.api.objects.CallbackQuery;
-import org.telegram.telegrambots.api.objects.Update;
-import org.telegram.telegrambots.api.objects.User;
-import org.telegram.telegrambots.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.api.objects.replykeyboard.ReplyKeyboardMarkup;
-import org.telegram.telegrambots.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-import org.telegram.telegrambots.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
+import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.User;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
@@ -98,21 +98,21 @@ public class KonvBot extends TelegramLongPollingBot {
       List<Channel> channels = dataService.getChatDao().getChannelsForUser(user);
       for (Channel channel : channels) {
         if (channel.getId().toString().equals(target)) {
-          if (!channel.hasTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()))) {
-            channel.addTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()));
+          if (!channel.hasTarget(String.valueOf(callbackQuery.getMessage().getChatId()))) {
+            channel.addTarget(String.valueOf(callbackQuery.getMessage().getChatId()));
             dataService.getChatDao().persistChannel(user, channel);
             answerCallbackQuery.setText("channel added");
           }
           else {
-            channel.removeTarget(String.valueOf(callbackQuery.getMessage().getChat().getId()));
+            channel.removeTarget(String.valueOf(callbackQuery.getMessage().getChatId()));
             dataService.getChatDao().persistChannel(user, channel);
             answerCallbackQuery.setText("channel removed!");
           }
 
-          logger.debug("Target {} added to channel {}", callbackQuery.getMessage().getChat().getId(), channel.getId());
+          logger.debug("Target {} added to channel {}", callbackQuery.getMessage().getChatId(), channel.getId());
         }
       }
-      answerCallbackQuery(answerCallbackQuery);
+      execute(answerCallbackQuery);
     }
     else if (action.equals("EDITCHANNEL")) {
       SendMessage sendMessage = new SendMessage();
@@ -126,13 +126,25 @@ public class KonvBot extends TelegramLongPollingBot {
       List<List<InlineKeyboardButton>> rows = new ArrayList<>();
       List<InlineKeyboardButton> row = new ArrayList<>();
       rows.add(row);
-      row.add(new InlineKeyboardButton().setText("Info").setCallbackData("INFOCHANNEL/" + target));
-      row.add(new InlineKeyboardButton().setText("Activate").setCallbackData("ACTIVATECHANNEL/" + target));
-      row.add(new InlineKeyboardButton().setText("Delete").setCallbackData("DELETECHANNEL/" + target));
+      InlineKeyboardButton infoButton = new InlineKeyboardButton();
+      infoButton.setText("Info");
+      infoButton.setCallbackData("INFOCHANNEL/" + target);
+      row.add(infoButton);
+
+      InlineKeyboardButton activateButton = new InlineKeyboardButton();
+      activateButton.setText("Activate");
+      activateButton.setCallbackData("ACTIVATECHANNEL/" + target);
+      row.add(activateButton);
+
+      InlineKeyboardButton deleteButton = new InlineKeyboardButton();
+      deleteButton.setText("Delete");
+      deleteButton.setCallbackData("DELETECHANNEL/" + target);
+      row.add(deleteButton);
+
       inlineKeyboardMarkup.setKeyboard(rows);
 
       sendMessage.setReplyMarkup(inlineKeyboardMarkup);
-      sendMessage(sendMessage);
+      execute(sendMessage);
     }
     else if (action.equals("DELETECHANNEL")) {
       final AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
@@ -144,8 +156,7 @@ public class KonvBot extends TelegramLongPollingBot {
       dataService.getChatDao().deleteChannel(user, channel);
 
       answerCallbackQuery.setText("Channel deleted");
-      answerCallbackQuery(answerCallbackQuery);
-
+      execute(answerCallbackQuery);
     }
     else if (action.equals("INFOCHANNEL")) {
       // INfo
@@ -165,7 +176,8 @@ public class KonvBot extends TelegramLongPollingBot {
       answer.append(" or use simple link to send receive a message").append(": ").append("https://message.frankl.info/message/").append(channel.getId())
           .append("/This%20is%20a%20example%20message%20to%20telegram").append("\n");
       sendMessage.setText(answer.toString());
-      sendMessage(sendMessage);
+      //      sendMessage(sendMessage);
+      execute(sendMessage);
     }
   }
 
@@ -272,7 +284,9 @@ public class KonvBot extends TelegramLongPollingBot {
     }
 
     try {
-      sendMessage(message);
+      execute(message);
+      //      sendMessage(message);
+
     } catch (TelegramApiException e) {
       e.printStackTrace();
     }
@@ -292,7 +306,10 @@ public class KonvBot extends TelegramLongPollingBot {
         emoji = "";
       }
 
-      row.add(new InlineKeyboardButton().setText(channel.getName() + " " + emoji).setCallbackData(action + "/" + channel.getId().toString()));
+      InlineKeyboardButton inlineKeyboardButton = new InlineKeyboardButton();
+      inlineKeyboardButton.setText(channel.getName() + " " + emoji);
+      inlineKeyboardButton.setCallbackData(action + "/" + channel.getId().toString());
+      row.add(inlineKeyboardButton);
       counter++;
       if (counter == 4) {
         counter = 0;
@@ -324,7 +341,7 @@ public class KonvBot extends TelegramLongPollingBot {
     ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
     replyKeyboardMarkup.setSelective(true);
     replyKeyboardMarkup.setResizeKeyboard(true);
-    replyKeyboardMarkup.setOneTimeKeyboad(false);
+    replyKeyboardMarkup.setOneTimeKeyboard(false);
 
     List<KeyboardRow> keyboard = new ArrayList<>();
     KeyboardRow keyboardFirstRow = new KeyboardRow();
@@ -358,7 +375,7 @@ public class KonvBot extends TelegramLongPollingBot {
           SendMessage sendMessage = new SendMessage();
           sendMessage.setChatId(target);
           sendMessage.setText(part);
-          sendMessage(sendMessage);
+          execute(sendMessage);
         }
 
 
