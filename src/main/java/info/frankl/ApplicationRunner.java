@@ -1,25 +1,28 @@
 package info.frankl;
 
-import com.google.common.eventbus.EventBus;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
-import info.frankl.bots.KonvBot;
-import info.frankl.dao.ChatDAO;
-import info.frankl.service.DataService;
-import info.frankl.web.JaxRsApplication;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.telegram.telegrambots.ApiContextInitializer;
-import org.telegram.telegrambots.TelegramBotsApi;
-import org.telegram.telegrambots.exceptions.TelegramApiException;
-
-import javax.ws.rs.core.UriBuilder;
-import javax.ws.rs.ext.RuntimeDelegate;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.Properties;
 import java.util.concurrent.Executors;
+
+import javax.ws.rs.core.UriBuilder;
+import javax.ws.rs.ext.RuntimeDelegate;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.telegram.telegrambots.meta.TelegramBotsApi;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
+
+import com.google.common.eventbus.EventBus;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+
+import info.frankl.bots.KonvBot;
+import info.frankl.dao.ChatDAO;
+import info.frankl.service.DataService;
+import info.frankl.web.JaxRsApplication;
 
 public class ApplicationRunner {
 
@@ -36,8 +39,13 @@ public class ApplicationRunner {
     EventBus eventBus = new EventBus();
 
     logger.debug("start");
-    ApiContextInitializer.init();
-    TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
+    TelegramBotsApi telegramBotsApi = null;
+    try {
+      telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
+    }
+    catch (TelegramApiException e) {
+      e.printStackTrace();
+    }
 
     Properties properties = Botpropperties.readProperties();
 
